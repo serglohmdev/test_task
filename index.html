@@ -1,0 +1,388 @@
+<html>
+<head>
+	<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+	<style>
+		body {
+			margin: 0,
+			padding: 0,
+			font-family: Verdana;
+		}
+		.item_class {
+			display: block;
+			height: 50px;
+			box-sizing: border-box;
+			border-bottom: #eee 1px solid;
+		}
+		.header_class {
+			word-wrap: normal;
+			white-space: nowrap;
+			height: 50px;
+			display: flex;
+  			align-items: center;
+			box-sizing: border-box;
+			padding-left: 10px;
+			padding-right: 10px;
+			border-bottom: #eee 1px solid;
+			cursor: pointer;
+			font-weight: 600;
+		}
+		.tools {
+			display: flex;
+			width: 100%;
+			padding: 10px;
+		}
+		.search_tools {
+			flex: 1;
+
+		}
+		.filter_tools {
+			flex: 1;
+		}
+	</style>
+</head>
+<body>
+	<div id="app">
+		<div class="tools">
+			<div class="search_tools">
+				<input type="text" @input="onFilterChange" placeholder="filter by album title">
+				show: {{ filterValue != ''? filteredIds.length: items.length }}
+			</div>
+			<div class="filter_tools">
+				<input type="text" @input="onSearchChange" size='30' placeholder="search by album title and photo title">
+				<span v-if="searchedIds.length">
+					{{ searchValue != ''? `found: ${searchedIds.length}`: '' }}
+					<button v-on:click="prevSearch"><</button>
+					<button v-on:click="nextSearch">></button>
+					{{searchIdx + 1}}: {{searchedIds.length}}
+				</span>
+			</div>
+		</div>
+		<sorted-header :headers="headers" :onclick="sort" :sortname="currentSort" :direction="currentSortDir"></sorted-header>
+		<scroll-table
+			ref="scrollTable"
+			:data-count="sortedItems.length"
+		>
+			<table-item v-for="(item, index) of sortedItems" class="item_class" :headers="headers" :highlighted="isHighlighted(item)" :item-data="item" :index="index" :key="index"></table-item>
+		</scroll-table>
+
+	</div>
+	<script>
+
+		Vue.component('sorted-header', {
+			props: ['onclick', 'headers', 'sortname', 'direction'],
+			// by oldschool reasons i decided do not use ``, but in real life here should be `...`
+			template: '<div style="display: block; width: calc(100% - 15px);">' +
+				'<div style="display: flex; height: 50px;">' +
+					'<div v-for="(item, index) of headers" :style="{flex: item.flex}" class="header_class" :key="index">' +
+						'<header-title v-if="item.sortkey" :onclick="onclick" :sortname="sortname" :title="item.title" :sortkey="item.sortkey" :direction="direction"></header-title>' +
+						'<div v-else>{{ item.title }}</div>' +
+					'</div>' +
+				'</div>' +
+			'</div>',
+
+		});
+
+		Vue.component('header-title', {
+			props: ['onclick', 'sortname', 'title', 'sortkey', 'direction'],
+			template: "<div @click='click'>{{ title }} {{ sortname !== sortkey ? null: direction === 'desc' ? '↓' : '↑' }}</div>",
+			methods: {
+				click: function(){
+					this.onclick(this.sortkey);
+				}
+			}
+		});
+
+		Vue.component('table-item', {
+			props: [
+				'item-data', 'highlighted', 'headers'
+			],
+			render(createElement){
+				var s = {
+					flex: 1,
+					boxSizing: 'border-box',
+					paddingLeft: '10px',
+					paddingRight: '10px',
+					display: 'flex',
+  					alignItems: 'center',
+
+				};
+
+				var fileds = [];
+				for(var j = 0, l = this.headers.length; j < l; j++){
+					var header = this.headers[j];
+					fileds.push(createElement('div', {style: Object.assign({}, s, {flex: header.flex})}, [
+						header.renderFunc ? header.renderFunc(createElement, this.itemData): this.itemData[header.id]
+					]));
+				}
+
+				return createElement('div', {
+					style: {
+						display: 'flex',
+						color: this.highlighted ? 'blue': '#333',
+					}
+				},
+				fileds);
+			},
+		});
+
+		Vue.component('scroll-table', {
+			props: ['data-count'],
+        	created: function(){
+        		this.params = {
+        			firstIdx: 0,
+        			lastFirstIdx: 0,
+        			lastIdx: 30,
+        			paddingTop: 0,
+					paddingBottom: 0,
+					itemHeight: 50,
+					showedItems: 25,
+        		};
+        	},
+        	watch: {
+        		dataCount: function () {
+            	    this.updateOffset(0);
+            	    this.$nextTick(this.scrollTo.bind(this, 0));
+            	}
+            },
+            methods: {
+            	onScroll: function (e) {
+            		var offset = (this.$refs.container && this.$refs.container.scrollTop) || 0;
+            		var fromTop = Math.floor(offset / this.params.itemHeight);
+					this.updateOffset(fromTop);
+            	},
+            	scrollTo(idx){
+            		if(this.$refs.container){
+            			var scrollTop = idx * this.params.itemHeight;
+						this.$refs.container.scrollTop = scrollTop;
+					}
+            	},
+            	updateOffset: function(fromTop){
+					this.params.paddingTop = fromTop * this.params.itemHeight;
+					this.params.firstIdx = fromTop;
+
+					if (this.params.lastFirstIdx != fromTop){
+						this.params.lastFirstIdx = fromTop;
+						this.$forceUpdate();
+					}
+            	}
+            },
+		  	render(createElement){
+		  		var slots = this.$slots.default;
+		  		var params = this.params;
+				var list = [];
+
+				params.totalCount = slots ? slots.length: 0;
+
+				if(params.firstIdx + params.showedItems >= params.totalCount){
+					params.firstIdx = params.totalCount - params.showedItems;
+					params.lastIdx = params.totalCount - 1;
+					this.params.paddingTop = params.firstIdx * this.params.itemHeight;
+				} else {
+					params.lastIdx = params.firstIdx + params.showedItems - 1;
+				}
+
+				var paddingBottom = params.itemHeight * (params.totalCount - params.showedItems) - params.paddingTop;
+				params.paddingBottom = paddingBottom;
+
+				if (params.lastIdx > 0){
+					for (var i = params.firstIdx; i <= params.lastIdx; i++) {
+						list.push(slots[i]);
+					}
+		  		}
+
+		  		return createElement(
+		  			'div', {},
+		  			[
+		  				createElement(
+							'div',
+							{
+								ref: 'container',
+								'style': {
+									'display': 'block',
+									'overflow-y': 'auto',
+									'height': 400 + 'px',
+								},
+								'on': {
+									'&scroll': this.onScroll
+								}
+							},
+							[
+								createElement('div',
+									{
+										'style': {
+											'display': 'block',
+											'padding-top': this.params.paddingTop + 'px',
+											'padding-bottom': this.params.paddingBottom + 'px'
+										}
+									},
+									list
+								)
+							]
+						)
+		  			]
+		  		);
+		  	}
+
+		})
+		let app = new Vue({
+			el: '#app',
+			data: {
+				albums: {},
+				items: [],
+      			searched: [],
+      			filterValue: '',
+      			filteredIds: [],
+      			searchIdx: 0,
+      			searchValue: '',
+      			currentSort: 'id',
+  				currentSortDir: 'asc',
+  				headers: [
+					{
+  						title: 'Id',
+  						id: 'id',
+  						sortkey: 'id',
+  						flex: 1,
+  					}, {
+  						title: 'Album Id',
+  						id: 'albumId',
+  						sortkey: 'albumId',
+  						flex: 1,
+					}, {
+  						title: 'Album title',
+  						id: 'albumTitle',
+  						sortkey: 'albumTitle',
+  						flex: 5,
+					}, {
+  						title: 'Title',
+  						id: 'title',
+  						sortkey: 'title',
+  						flex: 5,
+					}, {
+						title: 'Thumbnail',
+						id: 'thumbnailUrl',
+						flex: 5,
+						renderFunc: function(createElement, itemData){
+							return createElement('img', {
+								attrs: {
+									height: 50,
+									width: 50,
+									src: itemData.thumbnailUrl
+								}
+							});
+						},
+  					}
+  				]
+			},
+			computed:{
+				searchedIds: function() {
+					var searchValue = this.searchValue;
+					return this.sortedItems.filter(function(item){
+						return searchValue != '' && (item.title.indexOf(searchValue) > -1 || item.albumTitle.indexOf(searchValue) > -1);
+					}).map(function(item){return item.id;});
+				},
+				sortedItems: function() {
+					var filterValue = this.filterValue;
+					var filteredIds = this.filteredIds;
+					var currentSort = this.currentSort;
+					var currentSortDir = this.currentSortDir;
+					return this.items.filter(function(item){
+							if(filterValue == ''){
+								return true;
+							}
+							return filteredIds.indexOf(item.id) > -1;
+						}).sort(function(a, b){
+							let modifier = 1;
+							if(currentSortDir === 'desc') modifier = -1;
+							if(a[currentSort] < b[currentSort]) return -1 * modifier;
+							if(a[currentSort] > b[currentSort]) return 1 * modifier;
+							return 0;
+						});
+				},
+			},
+			created: function() {
+				var albumsUrl = 'https://jsonplaceholder.typicode.com/albums';
+				var photosUrl = 'https://jsonplaceholder.typicode.com/photos';
+				var getAlbums = fetch(albumsUrl);
+				var getPhotos = fetch(photosUrl);
+				// again... by oldschool reasons i decided do not use arrow functions
+				// this code written on board of ferry Tallinn-Helsinki, please do not judge strictly ;)
+				var setItems = this.setItems;
+				Promise
+					.all([getAlbums, getPhotos])
+					.then(
+						function(responses){
+							return Promise.all(
+								responses.map(function(resp){
+									return resp.json();
+								})
+							);
+						}
+					)
+					.then(function(data){
+						let albums = data[0].reduce(function(acc, current){
+							acc[current.id] = current;
+							return acc;
+						}, {});
+						let photos = data[1].map(function(el){
+							el.albumTitle = albums[el.albumId].title;
+							return el;
+						});
+						return {albums, photos};
+					})
+					.then(function(res){
+						setItems(res.photos);
+					});
+      		},
+			methods: {
+				isHighlighted(item){
+					var searchValue = this.searchValue;
+					return searchValue != '' && (item.title.indexOf(searchValue) > -1 || item.albumTitle.indexOf(searchValue) > -1);
+            	},
+				setItems: function(items){
+					this.items = items;
+				},
+				sort: function(s) {
+					if(s === this.currentSort) {
+						this.currentSortDir = this.currentSortDir === 'asc' ? 'desc': 'asc';
+					}
+					this.currentSort = s;
+				},
+				onFilterChange: function(e){
+  					this.filterValue = e.target.value;
+  					let filteredIds = [];
+  					if(this.filterValue !== ''){
+  						this.items.forEach(function(item){
+							if(item.albumTitle.indexOf(e.target.value) > -1){
+								filteredIds.push(item.id);
+							}
+						});
+					}
+					this.filteredIds = filteredIds;
+				},
+  				onSearchChange: function(e){
+  					this.searchValue = e.target.value;
+					this.searchIdx = 0;
+  				},
+				prevSearch: function(){
+					this.searchIdx--;
+					if(this.searchIdx < 0){
+						this.searchIdx = this.searchedIds.length - 1;
+					}
+					this.scrollToSearch(this.searchedIds[this.searchIdx]);
+				},
+				nextSearch: function(){
+					this.searchIdx++;
+					if(this.searchIdx >= this.searchedIds.length){
+						this.searchIdx = 0;
+					}
+					this.scrollToSearch(this.searchedIds[this.searchIdx]);
+				},
+				scrollToSearch: function(scrollId){
+					var findIdx = this.sortedItems.findIndex(function(item){return item.id == scrollId});
+					this.$refs.scrollTable.scrollTo(findIdx);
+  				}
+			}
+		});
+  	</script>
+</body>
+</html>

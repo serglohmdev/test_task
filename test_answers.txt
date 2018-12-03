@@ -1,0 +1,77 @@
+
+------------------------------------------------------------------------
+1.
+------------------------------------------------------------------------
+const expense = {
+  type : 'Business',
+  amount: '$50'
+}
+const {type, amount} = expense;
+------------------------------------------------------------------------
+2.
+------------------------------------------------------------------------
+function isPalindrome(s){
+  return s.replace(/[^A-Z0-9]/ig, "") == s.replace(/[^A-Z0-9]/ig, "").split('').reverse().join('')
+}
+------------------------------------------------------------------------
+3.
+------------------------------------------------------------------------
+let fruits = ['Apple', 'Apricot', 'Avocado', 'banana', 'Blackberry', 'Blueberry', 'Boysenberry', 'Crab apples', 'Currant', 'Cherry', 'Cherimoya', 'Chico fruit', 'Coconut', 'Cranberry', 'Custard apple', 'Date', 'dragonfruit', 'durian', 'Elderberry', 'Feijoa', 'Fig', 'Goji berry', 'Gooseberry', 'grape', 'Grapefruit', 'Guava', 'Honeyberry', 'Huckleberry', 'Jabuticaba', 'Jackfruit', 'Jambul', 'jujube', 'Juniper berry', 'Kiwifruit', 'Kumquat', 'Lemon', 'Lime', 'Loquat', 'Longan', 'Lychee', 'Mango', 'Mangosteen', 'Marionberry', 'Melon', 'Cantaloupe', 'Honeydew', 'Watermelon', 'Miracle fruit', 'Mulberry', 'Nectarine', 'Nance', 'Olive', 'Orange', 'Blood orange', 'Clementine', 'Mandarine', 'Tangerine', 'Papaya', 'Passionfruit', 'Peach', 'Pear', 'Persimmon', 'Plantain', 'Plum', 'Prune', 'Pineapple', 'Pluot', 'Pomegranate', 'Pomelo', 'Quince', 'Raspberry', 'Rambutan', 'Redcurrant', 'Salal berry', 'Salak', 'Salmonberry', 'Satsuma', 'Soursop', 'Star fruit', 'Strawberry', 'Tamarillo', 'Tamarind', 'Ugli fruit', 'Yuzu']
+function fruitPresent(cmp){
+  return fruits.filter((item) => item.toLowerCase() === cmp).length > 0;  
+}
+fruitPresent('apple');
+------------------------------------------------------------------------
+4.
+------------------------------------------------------------------------
+let productCart = [
+  { productname: 'iphone-x', qty: 10, price: 1000 },
+  { productname: 'macbook pro', qty: 200, price: 2000 },
+  { productname: 'iwatch', qty: 100, price: 550 },
+  { productname: 'macbook air', qty: 100, price: 1000 },
+  { productname: 'iphone 8', qty: 300, price: 700 },
+  { productname: 'iphone 7', qty: 100, price: 550 },
+  { productname: 'ipad Retina', qty: 20, price: 1000 },
+  { productname: 'ipad', qty: 10, price: 700 },
+  { productname: 'Magic Mouse', qty: 50, price: 300 },
+  { productname: 'Magic Trackpad', qty: 75, price: 200 }
+];
+
+function CostOfProductForQtyGreaterThan(n){
+  return productCart.reduce((result, item) => {
+    return result += item.qty > n ? item.price: 0;
+  }, 0);
+}
+
+function CostOfProduct(name){
+  return productCart.reduce((result, item) => {
+    return result += item.productname === name ? item.price * item.qty: 0;
+  }, 0);
+}
+------------------------------------------------------------------------
+5.
+------------------------------------------------------------------------
+
+i. No, the above code block will not return an error.
+ii. fixed code
+
+const team = {
+  members: ['Superman','Batman','Wonder Woman'],
+  teamName: 'Justice league',
+  teamSummary: function(){
+    const {teamName} = this;
+    return this.members.map(function(member) {
+      return `${member} is on team ${teamName}`;
+    });
+  }
+};
+team.teamSummary();
+
+
+
+
+
+
+
+
+
